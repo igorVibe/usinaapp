@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +12,11 @@ import 'cadastros/cadastro_unidade.dart';
 import 'cadastros/cadastro_unidade_medida.dart';
 import 'cadastros/cadastro_usuario.dart';
 
+import '../models/indicador.dart';
+import '../services/indicador_service.dart';
+import 'indicadores_page.dart';
+import 'indicador_webview.dart';
+
 class TelaPrincipal extends StatefulWidget {
   const TelaPrincipal({super.key});
 
@@ -19,8 +25,20 @@ class TelaPrincipal extends StatefulWidget {
 }
 
 class _TelaPrincipalState extends State<TelaPrincipal> {
+  // Lista dinâmica de indicadores vindos da API.
+  Future<List<Indicador>> indicadores =
+      IndicadorService().listar();
+
   bool cadastroAberto = false;
 
+  // Atualiza os indicadores consultando novamente a API.
+  void atualizarIndicadores() {
+    setState(() {
+      indicadores = IndicadorService().listar();
+    });
+  }
+
+  // Fecha o Drawer e abre a tela selecionada.
   void abrirTela(Widget tela) {
     Navigator.pop(context);
 
@@ -32,26 +50,39 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
     );
   }
 
+  // Encerra a sessão e retorna à tela de login.
   Future<void> sair() async {
-    final prefs =
-        await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setBool(
-      'loginRealizado',
-      false,
-    );
+    await prefs.setBool('loginRealizado', false);
 
     if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            const LoginPage(),
+        builder: (context) => const LoginPage(),
       ),
     );
   }
 
+  // Abre a tela de gerenciamento do CRUD.
+  Future<void> abrirGerenciamentoIndicadores() async {
+    Navigator.pop(context);
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const IndicadoresPage(),
+      ),
+    );
+
+    if (!mounted) return;
+
+    atualizarIndicadores();
+  }
+
+  // Constrói o menu lateral.
   Widget montarMenu() {
     return ListView(
       padding: EdgeInsets.zero,
@@ -92,89 +123,154 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
             leading: const Icon(Icons.chevron_right),
             title: const Text('Usuário'),
             onTap: () {
-              abrirTela(
-                const CadastroUsuarioPage(),
-              );
+              abrirTela(const CadastroUsuarioPage());
             },
           ),
 
           // UNIDADE
           ListTile(
             leading: const Icon(Icons.chevron_right),
-            title: const Text('Unidade'),
+            title: const Text('Unidades'),
             onTap: () {
-              abrirTela(
-                const CadastroUnidadePage(),
-              );
+              abrirTela(const CadastroUnidadePage());
             },
           ),
 
           // UNIDADE DE MEDIDA
           ListTile(
             leading: const Icon(Icons.chevron_right),
-            title: const Text('Unidade de Medida'),
+            title: const Text('Unidades de Medida'),
             onTap: () {
-              abrirTela(
-                const CadastroUnidadeMedidaPage(),
-              );
+              abrirTela(const CadastroUnidadeMedidaPage());
             },
           ),
 
           // EQUIPAMENTO
           ListTile(
             leading: const Icon(Icons.chevron_right),
-            title: const Text('Equipamento'),
+            title: const Text('Equipamentos'),
             onTap: () {
-              abrirTela(
-                const CadastroEquipamentoPage(),
-              );
+              abrirTela(const CadastroEquipamentoPage());
             },
           ),
 
-          // INDICADOR
+          // INDICADOR - CADASTRO EXISTENTE
           ListTile(
             leading: const Icon(Icons.chevron_right),
             title: const Text('Indicador'),
             onTap: () {
-              abrirTela(
-                const CadastroIndicadorPage(),
-              );
+              abrirTela(const CadastroIndicadorPage());
             },
           ),
 
           // SAFRA
           ListTile(
             leading: const Icon(Icons.chevron_right),
-            title: const Text('Safra'),
+            title: const Text('Safras'),
             onTap: () {
-              abrirTela(
-                const CadastroSafraPage(),
-              );
+              abrirTela(const CadastroSafraPage());
             },
           ),
 
           // TIPO DE INFORMAÇÃO
           ListTile(
             leading: const Icon(Icons.chevron_right),
-            title: const Text('Tipo de Informação'),
+            title: const Text('Tipos de Informação'),
             onTap: () {
-              abrirTela(
-                const CadastroTipoInformacaoPage(),
-              );
+              abrirTela(const CadastroTipoInformacaoPage());
             },
           ),
 
           // MEDIÇÃO
           ListTile(
             leading: const Icon(Icons.chevron_right),
-            title: const Text('Medição'),
+            title: const Text('Medições'),
             onTap: () {
-              abrirTela(
-                const CadastroMedicaoPage(),
-              );
+              abrirTela(const CadastroMedicaoPage());
             },
           ),
         ],
+
+        const Divider(),
+
+        // GERENCIAR INDICADORES - CRUD
+        ListTile(
+          leading: const Icon(Icons.settings),
+          title: const Text('Gerenciar indicadores'),
+          onTap: abrirGerenciamentoIndicadores,
+        ),
+
+        // SUBMENU DINÂMICO DE INDICADORES
+        ExpansionTile(
+          leading: const Icon(Icons.analytics),
+          title: const Text('Indicadores'),
+          children: [
+            FutureBuilder<List<Indicador>>(
+              future: indicadores,
+              builder: (context, snapshot) {
+                // Carregamento ou erro.
+                if (!snapshot.hasData) {
+                  return ListTile(
+                    leading: Icon(
+                      snapshot.hasError
+                          ? Icons.error_outline
+                          : Icons.hourglass_empty,
+                    ),
+                    title: Text(
+                      snapshot.hasError
+                          ? 'Falha ao carregar indicadores'
+                          : 'Carregando...',
+                    ),
+                    trailing: snapshot.hasError
+                        ? IconButton(
+                            icon: const Icon(Icons.refresh),
+                            tooltip: 'Tentar novamente',
+                            onPressed: atualizarIndicadores,
+                          )
+                        : null,
+                  );
+                }
+
+                final lista = snapshot.data!;
+
+                // Nenhum indicador cadastrado.
+                if (lista.isEmpty) {
+                  return const ListTile(
+                    title: Text('Nenhum indicador cadastrado'),
+                  );
+                }
+
+                // Lista os indicadores retornados pela API.
+                return Column(
+                  children: lista.map((item) {
+                    return ListTile(
+                      leading: const Icon(
+                        Icons.insert_chart_outlined,
+                      ),
+                      title: Text(item.nome),
+                      subtitle: Text(item.descricao),
+                      onTap: () {
+                        Navigator.pop(context);
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                IndicadorWebviewPage(
+                              indicador: item,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
+        ),
+
+        const Divider(),
 
         // SAIR
         ListTile(
@@ -192,9 +288,18 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
       appBar: AppBar(
         title: const Text('Usina App'),
       ),
+
+      // Atualiza os indicadores sempre que o Drawer é aberto.
+      onDrawerChanged: (aberto) {
+        if (aberto) {
+          atualizarIndicadores();
+        }
+      },
+
       drawer: Drawer(
         child: montarMenu(),
       ),
+
       body: const Center(
         child: Text(
           'Tela Principal',

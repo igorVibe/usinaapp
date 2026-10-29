@@ -106,10 +106,10 @@ class _CadastroUsuarioPageState
         fotoPath: fotoSelecionada?.path,
       );
 
-      print('Nome: ${usuario.nome}');
-      print('E-mail: ${usuario.email}');
-      print('Senha: ${usuario.senha}');
-      print(
+      debugPrint('Nome: ${usuario.nome}');
+      debugPrint('E-mail: ${usuario.email}');
+      debugPrint('Senha: ${usuario.senha}');
+      debugPrint(
         'Foto: ${usuario.fotoPath ?? "sem foto"}',
       );
 
